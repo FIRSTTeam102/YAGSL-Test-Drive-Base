@@ -45,8 +45,10 @@ public class RobotContainer
                                                                 () -> driverXbox.getLeftX() * -1)
                                                             .withControllerRotationAxis(driverXbox::getRightX)
                                                             .deadband(OperatorConstants.DEADBAND)
-                                                            .scaleTranslation(0.8)
-                                                            .allianceRelativeControl(true);
+                                                            .scaleTranslation(1.0)
+                                                            .scaleRotation(.5)
+                                                            .allianceRelativeControl(true)
+                                                            .robotRelative(false);
 
   /**
    * Clone's the angular velocity input stream and converts it to a fieldRelative input stream.
@@ -67,7 +69,7 @@ public class RobotContainer
                                                                     .withControllerRotationAxis(() -> driverXbox.getRawAxis(
                                                                         2))
                                                                     .deadband(OperatorConstants.DEADBAND)
-                                                                    .scaleTranslation(0.8)
+                                                                    .scaleTranslation(1)
                                                                     .allianceRelativeControl(true);
   // Derive the heading axis with math!
   SwerveInputStream driveDirectAngleKeyboard     = driveAngularVelocityKeyboard.copy()
@@ -145,15 +147,33 @@ public class RobotContainer
                                                                                      Units.degreesToRadians(180))
                                            ));
       driverXbox.start().onTrue(Commands.runOnce(() -> drivebase.resetOdometry(new Pose2d(3, 3, new Rotation2d()))));
-      driverXbox.button(1).whileTrue(drivebase.sysIdDriveMotorCommand());
-      driverXbox.button(2).whileTrue(Commands.runEnd(() -> driveDirectAngleKeyboard.driveToPoseEnabled(true),
-                                                     () -> driveDirectAngleKeyboard.driveToPoseEnabled(false)));
+      //driverXbox.button(1).whileTrue(drivebase.sysIdDriveMotorCommand());
+      //driverXbox.button(2).whileTrue(Commands.runEnd(() -> driveDirectAngleKeyboard.driveToPoseEnabled(true),
+      //                                               () -> driveDirectAngleKeyboard.driveToPoseEnabled(false)));
 
 //      driverXbox.b().whileTrue(
 //          drivebase.driveToPose(
 //              new Pose2d(new Translation2d(4, 4), Rotation2d.fromDegrees(0)))
 //                              );
-
+      driverXbox.leftTrigger().onTrue(Commands.runOnce(
+        ()->driveAngularVelocity.scaleTranslation(Constants.DrivebaseConstants.DrivePrecisionScale)
+                                .scaleRotation(0.3)
+                                ))
+                    .onFalse(Commands.runOnce(
+        ()->driveAngularVelocity.scaleTranslation(Constants.DrivebaseConstants.DriveFastScale)
+                                .scaleRotation(0.5)));
+                                
+      //Enable robotRelative driving if the right trigger is pressed.
+      driverXbox.rightTrigger().onTrue(Commands.runOnce(
+        ()->driveAngularVelocity.robotRelative(true)
+                                .allianceRelativeControl(false)
+                                ))
+                      .onFalse(Commands.runOnce(
+        ()->driveAngularVelocity.robotRelative(false)
+                                .allianceRelativeControl(true)
+                      ));
+      driverXbox.start().onTrue((Commands.runOnce(drivebase::zeroGyro)));
+      driverXbox.back().whileTrue(drivebase.centerModulesCommand());
     }
     if (DriverStation.isTest())
     {
@@ -191,5 +211,14 @@ public class RobotContainer
   public void setMotorBrake(boolean brake)
   {
     drivebase.setMotorBrake(brake);
+  }
+
+  public void ZeroGyro(){
+    drivebase.zeroGyroWithAlliance();
+  }
+
+  public void setDriveMode()
+  {
+    configureBindings();
   }
 }
