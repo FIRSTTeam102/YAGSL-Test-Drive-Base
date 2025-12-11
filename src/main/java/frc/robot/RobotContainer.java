@@ -18,6 +18,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.Constants.DrivebaseConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import java.io.File;
@@ -92,6 +93,18 @@ public class RobotContainer
                                                                                .translationHeadingOffset(Rotation2d.fromDegrees(
                                                                                    0));
 
+
+  SwerveInputStream driveAngularVelocitySim = SwerveInputStream.of(drivebase.getSwerveDrive(),
+                                                                    () -> -driverXbox.getLeftY(),
+                                                                    () -> -driverXbox.getLeftX())
+                                                                  .robotRelative(false)
+                                                                  .withControllerRotationAxis(() -> driverXbox.getRightX() * -1)
+                                                                  .deadband(OperatorConstants.DEADBAND)
+                                                                  .scaleTranslation(DrivebaseConstants.DriveFastScale)
+                                                                  .allianceRelativeControl(true);
+  
+  Command driveRobotOrientAngularVelocity = drivebase.driveRobotOriented(driveRobotOriented);
+
   /**
    * The container for the robot. Contains subsystems, OI devices, and commands.
    */
@@ -121,6 +134,26 @@ public class RobotContainer
     Command driveFieldOrientedAnglularVelocityKeyboard = drivebase.driveFieldOriented(driveAngularVelocityKeyboard);
     Command driveSetpointGenKeyboard = drivebase.driveWithSetpointGeneratorFieldRelative(
         driveDirectAngleKeyboard);
+
+        driverXbox.leftTrigger().onTrue(Commands.runOnce(
+          ()->driveAngularVelocity.scaleTranslation(Constants.DrivebaseConstants.DrivePrecisionScale)
+                                  .scaleRotation(0.3)
+                                  ))
+                      .onFalse(Commands.runOnce(
+          ()->driveAngularVelocity.scaleTranslation(Constants.DrivebaseConstants.DriveFastScale)
+                                  .scaleRotation(0.5)));
+                                  
+        //Enable robotRelative driving if the right trigger is pressed.
+        driverXbox.rightTrigger().onTrue(Commands.runOnce(
+          ()->driveAngularVelocity.robotRelative(true)
+                                  .allianceRelativeControl(false)
+                                  ))
+                        .onFalse(Commands.runOnce(
+          ()->driveAngularVelocity.robotRelative(false)
+                                  .allianceRelativeControl(true)
+                        ));
+        driverXbox.start().onTrue((Commands.runOnce(drivebase::zeroGyro)));
+        driverXbox.back().whileTrue(drivebase.centerModulesCommand());
 
     if (RobotBase.isSimulation())
     {
@@ -155,25 +188,6 @@ public class RobotContainer
 //          drivebase.driveToPose(
 //              new Pose2d(new Translation2d(4, 4), Rotation2d.fromDegrees(0)))
 //                              );
-      driverXbox.leftTrigger().onTrue(Commands.runOnce(
-        ()->driveAngularVelocity.scaleTranslation(Constants.DrivebaseConstants.DrivePrecisionScale)
-                                .scaleRotation(0.3)
-                                ))
-                    .onFalse(Commands.runOnce(
-        ()->driveAngularVelocity.scaleTranslation(Constants.DrivebaseConstants.DriveFastScale)
-                                .scaleRotation(0.5)));
-                                
-      //Enable robotRelative driving if the right trigger is pressed.
-      driverXbox.rightTrigger().onTrue(Commands.runOnce(
-        ()->driveAngularVelocity.robotRelative(true)
-                                .allianceRelativeControl(false)
-                                ))
-                      .onFalse(Commands.runOnce(
-        ()->driveAngularVelocity.robotRelative(false)
-                                .allianceRelativeControl(true)
-                      ));
-      driverXbox.start().onTrue((Commands.runOnce(drivebase::zeroGyro)));
-      driverXbox.back().whileTrue(drivebase.centerModulesCommand());
     }
     if (DriverStation.isTest())
     {
